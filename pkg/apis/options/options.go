@@ -55,7 +55,8 @@ type Options struct {
 	Server        Server `cfg:",internal"`
 	MetricsServer Server `cfg:",internal"`
 
-	Providers Providers `cfg:",internal"`
+	Providers         Providers `cfg:",internal"`
+	DefaultProviderID string    `cfg:",internal"`
 
 	APIRoutes             []string `flag:"api-route" cfg:"api_routes"`
 	SkipAuthRegex         []string `flag:"skip-auth-regex" cfg:"skip_auth_regex"`

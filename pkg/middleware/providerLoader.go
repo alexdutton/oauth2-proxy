@@ -14,17 +14,25 @@ import (
 func NewProviderLoader(loader loader.Loader) alice.Constructor {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			ctx := req.Context()
 
-			providerID := utils.ProviderIDFromContext(req.Context())
+			providerID := utils.ProviderIDFromContext(ctx)
 
-			provider, err := loader.Load(req.Context(), providerID)
-			if err != nil {
-				logger.Error(fmt.Sprintf("unable to load provider, id='%s': %s", providerID, err.Error()))
-				rw.WriteHeader(http.StatusUnauthorized)
-				return
+			if providerID == "" {
+				provider, err := loader.GetDefault(req.Context())
+				if err == nil {
+					ctx = utils.AppendProviderToContext(ctx, provider)
+				}
+			} else {
+				provider, err := loader.Load(req.Context(), providerID)
+				if err != nil {
+					logger.Error(fmt.Sprintf("unable to load provider, id='%s': %s", providerID, err.Error()))
+					rw.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+
+				ctx = utils.AppendProviderToContext(ctx, provider)
 			}
-
-			ctx := utils.AppendProviderToContext(req.Context(), provider)
 			next.ServeHTTP(rw, req.WithContext(ctx))
 		})
 	}

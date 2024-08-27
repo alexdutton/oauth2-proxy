@@ -14,6 +14,7 @@ import (
 type Loader interface {
 	// id is provider id, which should be same as providerId
 	Load(ctx context.Context, id string) (providers.Provider, error)
+	GetDefault(ctx context.Context) (providers.Provider, error)
 }
 
 // factory function for types.Loader interface
@@ -21,11 +22,11 @@ func NewLoader(opts *options.Options) (Loader, error) {
 	conf := opts.ProviderLoader
 	switch conf.Type {
 	case "config":
-		return configloader.New(opts.Providers)
+		return configloader.New(opts.Providers, opts.DefaultProviderID)
 	case "", "single": // default set to single provider loaded from config
 		return single.New(opts.Providers[0])
 	case "postgres":
-		return postgres.New(*opts.ProviderLoader.PostgresLoader, opts.ProxyPrefix)
+		return postgres.New(*opts.ProviderLoader.PostgresLoader, opts.ProxyPrefix, opts.DefaultProviderID)
 	default:
 		return nil, fmt.Errorf("invalid provider loader type '%s'", conf.Type)
 	}

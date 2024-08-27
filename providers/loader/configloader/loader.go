@@ -9,13 +9,18 @@ import (
 )
 
 type Loader struct {
-	providersConf options.Providers             // providers configuration that has been loaded from file at path loader.conf.ProvidersFile
-	providers     map[string]providers.Provider // providers map, key is provider id
+	providersConf     options.Providers             // providers configuration that has been loaded from file at path loader.conf.ProvidersFile
+	providers         map[string]providers.Provider // providers map, key is provider id
+	defaultProviderID string
 }
 
-func New(conf options.Providers) (*Loader, error) {
+func New(conf options.Providers, defaultProviderID string) (*Loader, error) {
+	if defaultProviderID == "" {
+		defaultProviderID = conf[0].ID
+	}
 	loader := &Loader{
-		providersConf: conf,
+		providersConf:     conf,
+		defaultProviderID: defaultProviderID,
 	}
 	loader.providers = make(map[string]providers.Provider)
 
@@ -38,4 +43,11 @@ func (l *Loader) Load(_ context.Context, id string) (providers.Provider, error) 
 		return provider, nil
 	}
 	return nil, fmt.Errorf("no provider found with id='%s'", id)
+}
+
+func (l *Loader) GetDefault(_ context.Context) (providers.Provider, error) {
+	if provider, ok := l.providers[l.defaultProviderID]; ok {
+		return provider, nil
+	}
+	return nil, fmt.Errorf("no default provider found with id='%s'", l.defaultProviderID)
 }

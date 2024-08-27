@@ -46,6 +46,8 @@ func (r *rule) execute(req *http.Request) string {
 		sourceStr = req.URL.Query().Get(r.conf.QueryParam)
 	case options.ProviderMatcherRuleSourceHeader:
 		sourceStr = req.Header.Get(r.conf.Header)
+	case options.ProviderMatcherRuleSourceDefault:
+		sourceStr = r.conf.Value
 	}
 
 	cgs := r.regexp.FindStringSubmatch(sourceStr)

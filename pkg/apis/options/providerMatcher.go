@@ -8,6 +8,7 @@ const (
 	ProviderMatcherRuleSourcePath        ProviderMatcherRuleSource = "path"
 	ProviderMatcherRuleSourceQueryParams ProviderMatcherRuleSource = "query"
 	ProviderMatcherRuleSourceHeader      ProviderMatcherRuleSource = "header"
+	ProviderMatcherRuleSourceDefault     ProviderMatcherRuleSource = "default"
 )
 
 // ProviderMatcherRule is the structure to define rule for finding provider id in request
@@ -30,6 +31,9 @@ type ProviderMatcherRule struct {
 
 	// JWT Claim defines the json field containing provider id in jwt token e.g provider.id
 	JWTClaim string `json:"jwtClaim,omitempty"`
+
+	// Default value for "default" rule type
+	Value string `json:"value,omitempty"`
 }
 
 type ProviderMatcher struct {

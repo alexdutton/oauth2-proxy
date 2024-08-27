@@ -144,6 +144,8 @@ func (s *SessionState) GetClaim(claim string) []string {
 		return []string{s.Email}
 	case "user":
 		return []string{s.User}
+	case "provider_id":
+		return []string{s.ProviderID}
 	case "groups":
 		groups := make([]string, len(s.Groups))
 		copy(groups, s.Groups)

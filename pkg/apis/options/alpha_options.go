@@ -42,7 +42,8 @@ type AlphaOptions struct {
 	MetricsServer Server `json:"metricsServer,omitempty"`
 
 	// Providers is used to configure multiple providers.
-	Providers Providers `json:"providers,omitempty"`
+	Providers         Providers `json:"providers,omitempty"`
+	DefaultProviderID string    `json:"defaultProviderId,omitempty"`
 
 	// ProviderLoader is used to allow multiple providers in oauth2-proxy.
 	// You can choose between single, config and postgres types.
@@ -63,6 +64,7 @@ func (a *AlphaOptions) MergeInto(opts *Options) {
 	opts.Server = a.Server
 	opts.MetricsServer = a.MetricsServer
 	opts.Providers = a.Providers
+	opts.DefaultProviderID = a.DefaultProviderID
 	opts.ProviderLoader = a.ProviderLoader
 	opts.ProviderMatcher = a.ProviderMatcher
 }

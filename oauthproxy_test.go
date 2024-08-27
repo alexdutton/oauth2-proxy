@@ -182,7 +182,7 @@ func Test_enrichSession(t *testing.T) {
 			}
 			pd := NewTestProvider(&url.URL{Host: "www.example.com"}, providerEmail)
 
-			err = proxy.enrichSessionState(context.Background(), tc.session, pd)
+			err = proxy.enrichSessionState(context.Background(), tc.session, "test-provider", pd)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectedUser, tc.session.User)
 			assert.Equal(t, tc.expectedEmail, tc.session.Email)

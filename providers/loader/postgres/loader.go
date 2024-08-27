@@ -11,11 +11,12 @@ import (
 )
 
 type ProviderStore struct {
-	opts        options.PostgresLoader
-	configStore ConfigStore
+	opts              options.PostgresLoader
+	configStore       ConfigStore
+	defaultProviderID string
 }
 
-func New(opts options.PostgresLoader, proxyPrefix string) (*ProviderStore, error) {
+func New(opts options.PostgresLoader, proxyPrefix string, defaultProviderID string) (*ProviderStore, error) {
 
 	configStore, err := initializeConfigStore(opts)
 	if err != nil {
@@ -27,8 +28,9 @@ func New(opts options.PostgresLoader, proxyPrefix string) (*ProviderStore, error
 	}
 
 	l := ProviderStore{
-		opts:        opts,
-		configStore: configStore,
+		opts:              opts,
+		configStore:       configStore,
+		defaultProviderID: defaultProviderID,
 	}
 	return &l, nil
 }
@@ -48,6 +50,10 @@ func (ps *ProviderStore) Load(ctx context.Context, id string) (providers.Provide
 	}
 
 	return provider, nil
+}
+
+func (ps *ProviderStore) GetDefault(ctx context.Context) (providers.Provider, error) {
+	return ps.Load(ctx, ps.defaultProviderID)
 }
 
 func providerFromConfig(providerJSON string) (providers.Provider, error) {

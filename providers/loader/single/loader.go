@@ -27,3 +27,7 @@ func New(conf options.Provider) (*Loader, error) {
 func (l *Loader) Load(_ context.Context, _ string) (providers.Provider, error) {
 	return l.provider, nil
 }
+
+func (l *Loader) GetDefault(_ context.Context) (providers.Provider, error) {
+	return l.provider, nil
+}
