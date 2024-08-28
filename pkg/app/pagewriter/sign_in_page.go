@@ -15,6 +15,7 @@ import (
 
 	middlewareapi "github.com/oauth2-proxy/oauth2-proxy/v7/pkg/apis/middleware"
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/logger"
+	"github.com/oauth2-proxy/oauth2-proxy/v7/providers"
 	"github.com/oauth2-proxy/oauth2-proxy/v7/providers/utils"
 )
 
@@ -52,17 +53,11 @@ type signInPageWriter struct {
 
 // WriteSignInPage writes the sign-in page to the given response writer.
 // It uses the redirectURL to be able to set the final destination for the user post login.
-func (s *signInPageWriter) WriteSignInPage(rw http.ResponseWriter, req *http.Request, redirectURL string, statusCode int) {
-
-	provider := utils.ProviderFromContext(req.Context())
-	if provider == nil {
-		fmt.Println("NO PROVIDER FOUND")
-	}
+func (s *signInPageWriter) WriteSignInPage(rw http.ResponseWriter, req *http.Request, ps []providers.Provider, redirectURL string, statusCode int) {
 
 	t := struct {
 		ProviderIDInputName string
-		ProviderID          string
-		ProviderName        string
+		Providers           []providers.Provider
 		SignInMessage       template.HTML
 		StatusCode          int
 		CustomLogin         bool
@@ -73,8 +68,7 @@ func (s *signInPageWriter) WriteSignInPage(rw http.ResponseWriter, req *http.Req
 		LogoData            template.HTML
 	}{
 		ProviderIDInputName: utils.DefaultProviderIDQueryParam,
-		ProviderID:          utils.ProviderIDFromContext(req.Context()),
-		ProviderName:        provider.Data().ProviderName,
+		Providers:           ps,
 		SignInMessage:       template.HTML(s.signInMessage), // #nosec G203 -- We allow unescaped template.HTML since it is user configured options
 		StatusCode:          statusCode,
 		CustomLogin:         s.displayLoginForm,

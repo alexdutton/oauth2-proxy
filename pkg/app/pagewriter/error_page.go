@@ -52,6 +52,8 @@ type ErrorPageOpts struct {
 	AppError string
 	// Generic error messages shown in non-debug mode
 	Messages []interface{}
+	// Provider ID for authentication purposes
+	ProviderID string
 }
 
 // WriteErrorPage writes an error page to the given response writer.
@@ -73,7 +75,7 @@ func (e *errorPageWriter) WriteErrorPage(ctx context.Context, rw http.ResponseWr
 		Version             string
 	}{
 		ProviderIDInputName: utils.DefaultProviderIDQueryParam,
-		ProviderID:          utils.ProviderIDFromContext(ctx),
+		ProviderID:          opts.ProviderID,
 		Title:               http.StatusText(opts.Status),
 		Message:             e.getMessage(opts.Status, opts.AppError, opts.Messages...),
 		ProxyPrefix:         e.proxyPrefix,

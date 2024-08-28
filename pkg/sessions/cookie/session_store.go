@@ -33,10 +33,6 @@ type SessionStore struct {
 	Minimal      bool
 }
 
-func (s *SessionStore) cookieName(req *http.Request) string {
-	return pkgcookies.CookieName(req.Context(), s.Cookie)
-}
-
 // Save takes a sessions.SessionState and stores the information from it
 // within Cookies set on the HTTP response writer
 func (s *SessionStore) Save(rw http.ResponseWriter, req *http.Request, ss *sessions.SessionState) error {
@@ -53,7 +49,7 @@ func (s *SessionStore) Save(rw http.ResponseWriter, req *http.Request, ss *sessi
 // Load reads sessions.SessionState information from Cookies within the
 // HTTP request object
 func (s *SessionStore) Load(req *http.Request) (*sessions.SessionState, error) {
-	c, err := loadCookie(req, s.cookieName(req))
+	c, err := loadCookie(req, s.Cookie.Name)
 	if err != nil {
 		// always http.ErrNoCookie
 		return nil, err
@@ -74,7 +70,7 @@ func (s *SessionStore) Load(req *http.Request) (*sessions.SessionState, error) {
 // clear the session
 func (s *SessionStore) Clear(rw http.ResponseWriter, req *http.Request) error {
 	// matches CookieName, CookieName_<number>
-	var cookieNameRegex = regexp.MustCompile(fmt.Sprintf("^%s(_\\d+)?$", s.cookieName(req)))
+	var cookieNameRegex = regexp.MustCompile(fmt.Sprintf("^%s(_\\d+)?$", s.Cookie.Name))
 
 	for _, c := range req.Cookies() {
 		if cookieNameRegex.MatchString(c.Name) {
@@ -125,12 +121,12 @@ func (s *SessionStore) makeSessionCookie(req *http.Request, value []byte, now ti
 	strValue := string(value)
 	if strValue != "" {
 		var err error
-		strValue, err = encryption.SignedValue(s.Cookie.Secret, s.cookieName(req), value, now)
+		strValue, err = encryption.SignedValue(s.Cookie.Secret, s.Cookie.Name, value, now)
 		if err != nil {
 			return nil, err
 		}
 	}
-	c := s.makeCookie(req, s.cookieName(req), strValue, s.Cookie.Expire, now)
+	c := s.makeCookie(req, s.Cookie.Name, strValue, s.Cookie.Expire, now)
 	if len(c.String()) > maxCookieLength {
 		return splitCookie(c), nil
 	}

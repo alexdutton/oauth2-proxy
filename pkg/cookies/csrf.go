@@ -1,7 +1,6 @@
 package cookies
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/apis/sessions"
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/clock"
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/encryption"
-	"github.com/oauth2-proxy/oauth2-proxy/v7/providers/utils"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -45,7 +43,6 @@ type csrf struct {
 	// which is used to compare the code challenge when exchanging the
 	// authentication code.
 	CodeVerifier string `msgpack:"cv,omitempty"`
-	ProviderID   string `msgpack:"tid,omitempty"`
 
 	cookieOpts *options.Cookie
 	time       clock.Clock
@@ -55,7 +52,7 @@ type csrf struct {
 const csrfStateLength int = 9
 
 // NewCSRF creates a CSRF with random nonces
-func NewCSRF(ctx context.Context, opts *options.Cookie, codeVerifier string) (CSRF, error) {
+func NewCSRF(opts *options.Cookie, codeVerifier string) (CSRF, error) {
 	state, err := encryption.Nonce(32)
 	if err != nil {
 		return nil, err
@@ -65,13 +62,10 @@ func NewCSRF(ctx context.Context, opts *options.Cookie, codeVerifier string) (CS
 		return nil, err
 	}
 
-	tid := utils.ProviderIDFromContext(ctx)
-
 	return &csrf{
 		OAuthState:   state,
 		OIDCNonce:    nonce,
 		CodeVerifier: codeVerifier,
-		ProviderID:   tid,
 
 		cookieOpts: opts,
 	}, nil
@@ -87,19 +81,7 @@ func LoadCSRFCookie(req *http.Request, opts *options.Cookie) (CSRF, error) {
 		return nil, err
 	}
 
-	crf, err := decodeCSRFCookie(cookie, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	// matching provider id from request and in cookie
-	providerIDFromRequest := utils.ProviderIDFromContext(req.Context())
-
-	if providerIDFromRequest != crf.ProviderID {
-		return nil, errors.New("providerID in request does not match providerID in csrf cookie")
-	}
-
-	return crf, nil
+	return decodeCSRFCookie(cookie, opts)
 }
 
 // GenerateCookieName in case cookie options state that CSRF cookie has fixed name then set fixed name, otherwise
@@ -111,7 +93,7 @@ func GenerateCookieName(req *http.Request, opts *options.Cookie) string {
 		// in case of parallel requests
 		stateSubstring = ExtractStateSubstring(req)
 	}
-	return csrfCookieName(req.Context(), opts, stateSubstring)
+	return csrfCookieName(opts, stateSubstring)
 }
 
 func (c *csrf) GetCodeVerifier() string {
@@ -146,14 +128,14 @@ func (c *csrf) SetSessionNonce(s *sessions.SessionState) {
 
 // SetCookie encodes the CSRF to a signed cookie and sets it on the ResponseWriter
 func (c *csrf) SetCookie(rw http.ResponseWriter, req *http.Request) (*http.Cookie, error) {
-	encoded, err := c.encodeCookie(req.Context())
+	encoded, err := c.encodeCookie()
 	if err != nil {
 		return nil, err
 	}
 
 	cookie := MakeCookieFromOptions(
 		req,
-		c.cookieName(req.Context()),
+		c.cookieName(),
 		encoded,
 		c.cookieOpts,
 		c.cookieOpts.CSRFExpire,
@@ -168,7 +150,7 @@ func (c *csrf) SetCookie(rw http.ResponseWriter, req *http.Request) (*http.Cooki
 func (c *csrf) ClearCookie(rw http.ResponseWriter, req *http.Request) {
 	http.SetCookie(rw, MakeCookieFromOptions(
 		req,
-		c.cookieName(req.Context()),
+		c.cookieName(),
 		"",
 		c.cookieOpts,
 		time.Hour*-1,
@@ -178,7 +160,7 @@ func (c *csrf) ClearCookie(rw http.ResponseWriter, req *http.Request) {
 
 // encodeCookie MessagePack encodes and encrypts the CSRF and then creates a
 // signed cookie value
-func (c *csrf) encodeCookie(ctx context.Context) (string, error) {
+func (c *csrf) encodeCookie() (string, error) {
 	packed, err := msgpack.Marshal(c)
 	if err != nil {
 		return "", fmt.Errorf("error marshalling CSRF to msgpack: %v", err)
@@ -189,7 +171,7 @@ func (c *csrf) encodeCookie(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	return encryption.SignedValue(c.cookieOpts.Secret, c.cookieName(ctx), encrypted, c.time.Now())
+	return encryption.SignedValue(c.cookieOpts.Secret, c.cookieName(), encrypted, c.time.Now())
 }
 
 // decodeCSRFCookie validates the signature then decrypts and decodes a CSRF
@@ -216,19 +198,19 @@ func decodeCSRFCookie(cookie *http.Cookie, opts *options.Cookie) (*csrf, error) 
 }
 
 // cookieName returns the CSRF cookie's name
-func (c *csrf) cookieName(ctx context.Context) string {
+func (c *csrf) cookieName() string {
 	stateSubstring := ""
 	if c.cookieOpts.CSRFPerRequest {
 		stateSubstring = encryption.HashNonce(c.OAuthState)[0 : csrfStateLength-1]
 	}
-	return csrfCookieName(ctx, c.cookieOpts, stateSubstring)
+	return csrfCookieName(c.cookieOpts, stateSubstring)
 }
 
-func csrfCookieName(ctx context.Context, opts *options.Cookie, stateSubstring string) string {
+func csrfCookieName(opts *options.Cookie, stateSubstring string) string {
 	if stateSubstring == "" {
-		return fmt.Sprintf("%v_csrf", CookieName(ctx, opts))
+		return fmt.Sprintf("%v_csrf", opts.Name)
 	}
-	return fmt.Sprintf("%v_csrf_%v", CookieName(ctx, opts), stateSubstring)
+	return fmt.Sprintf("%v_csrf_%v", opts.Name, stateSubstring)
 }
 
 // ExtractStateSubstring extract the initial state characters, to add it to the CSRF cookie name

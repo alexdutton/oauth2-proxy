@@ -12,7 +12,7 @@ import (
 	sessionsapi "github.com/oauth2-proxy/oauth2-proxy/v7/pkg/apis/sessions"
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/logger"
 	"github.com/oauth2-proxy/oauth2-proxy/v7/providers"
-	"github.com/oauth2-proxy/oauth2-proxy/v7/providers/utils"
+	"github.com/oauth2-proxy/oauth2-proxy/v7/providers/loader"
 )
 
 const (
@@ -47,10 +47,11 @@ type StoredSessionLoaderOptions struct {
 // sessions from the session store.
 // If no session is found, the request will be passed to the nex handler.
 // If a session was loader by a previous handler, it will not be replaced.
-func NewStoredSessionLoader(opts *StoredSessionLoaderOptions) alice.Constructor {
+func NewStoredSessionLoader(providerLoader loader.Loader, opts *StoredSessionLoaderOptions) alice.Constructor {
 	ss := &storedSessionLoader{
-		store:         opts.SessionStore,
-		refreshPeriod: opts.RefreshPeriod,
+		store:          opts.SessionStore,
+		refreshPeriod:  opts.RefreshPeriod,
+		providerLoader: providerLoader,
 	}
 	return ss.loadSession
 }
@@ -58,8 +59,9 @@ func NewStoredSessionLoader(opts *StoredSessionLoaderOptions) alice.Constructor 
 // storedSessionLoader is responsible for loading sessions from cookie
 // identified sessions in the session store.
 type storedSessionLoader struct {
-	store         sessionsapi.SessionStore
-	refreshPeriod time.Duration
+	store          sessionsapi.SessionStore
+	refreshPeriod  time.Duration
+	providerLoader loader.Loader
 }
 
 // loadSession attempts to load a session as identified by the request cookies.
@@ -77,18 +79,14 @@ func (s *storedSessionLoader) loadSession(next http.Handler) http.Handler {
 		}
 
 		var session *sessionsapi.SessionState
-		provider := utils.ProviderFromContext(req.Context())
-		if provider != nil {
-			var err error
-			session, err = s.getValidatedSession(rw, req, provider)
-			if err != nil && !errors.Is(err, http.ErrNoCookie) {
-				// In the case when there was an error loading the session,
-				// we should clear the session
-				logger.Errorf("Error loading cookied session: %v, removing session", err)
-				err = s.store.Clear(rw, req)
-				if err != nil {
-					logger.Errorf("Error removing session: %v", err)
-				}
+		session, err := s.getValidatedSession(rw, req)
+		if err != nil && !errors.Is(err, http.ErrNoCookie) {
+			// In the case when there was an error loading the session,
+			// we should clear the session
+			logger.Errorf("Error loading cookied session: %v, removing session", err)
+			err = s.store.Clear(rw, req)
+			if err != nil {
+				logger.Errorf("Error removing session: %v", err)
 			}
 		}
 
@@ -100,10 +98,15 @@ func (s *storedSessionLoader) loadSession(next http.Handler) http.Handler {
 
 // getValidatedSession is responsible for loading a session and making sure
 // that is is valid.
-func (s *storedSessionLoader) getValidatedSession(rw http.ResponseWriter, req *http.Request, provider providers.Provider) (*sessionsapi.SessionState, error) {
+func (s *storedSessionLoader) getValidatedSession(rw http.ResponseWriter, req *http.Request) (*sessionsapi.SessionState, error) {
 	session, err := s.store.Load(req)
 	if err != nil || session == nil {
 		// No session was found in the storage or error occurred, nothing more to do
+		return nil, err
+	}
+
+	provider, err := s.providerLoader.Load(req.Context(), session.ProviderID)
+	if err != nil {
 		return nil, err
 	}
 

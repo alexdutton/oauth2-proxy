@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/apis/options"
@@ -11,12 +12,11 @@ import (
 )
 
 type ProviderStore struct {
-	opts              options.PostgresLoader
-	configStore       ConfigStore
-	defaultProviderID string
+	opts        options.PostgresLoader
+	configStore ConfigStore
 }
 
-func New(opts options.PostgresLoader, proxyPrefix string, defaultProviderID string) (*ProviderStore, error) {
+func New(opts options.PostgresLoader, proxyPrefix string) (*ProviderStore, error) {
 
 	configStore, err := initializeConfigStore(opts)
 	if err != nil {
@@ -28,9 +28,8 @@ func New(opts options.PostgresLoader, proxyPrefix string, defaultProviderID stri
 	}
 
 	l := ProviderStore{
-		opts:              opts,
-		configStore:       configStore,
-		defaultProviderID: defaultProviderID,
+		opts:        opts,
+		configStore: configStore,
 	}
 	return &l, nil
 }
@@ -52,8 +51,12 @@ func (ps *ProviderStore) Load(ctx context.Context, id string) (providers.Provide
 	return provider, nil
 }
 
-func (ps *ProviderStore) GetDefault(ctx context.Context) (providers.Provider, error) {
-	return ps.Load(ctx, ps.defaultProviderID)
+func (ps *ProviderStore) LoadByIssuer(ctx context.Context, issuer string) (providers.Provider, error) {
+	return nil, errors.New("Postgres loader doesn't implement loading providers by issuer")
+}
+
+func (l *ProviderStore) List(_ context.Context) []providers.Provider {
+	return make([]providers.Provider, 0)
 }
 
 func providerFromConfig(providerJSON string) (providers.Provider, error) {

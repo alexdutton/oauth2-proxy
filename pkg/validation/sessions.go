@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/apis/options"
-	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/cookies"
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/encryption"
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/sessions/redis"
 )
@@ -58,9 +57,7 @@ func validateRedisSessionStore(o *options.Options) []string {
 	}
 	nonce := base64.RawURLEncoding.EncodeToString(n)
 
-	// here context.TODO() is used since usually in middleware, provider will be added to context,
-	// but during validation phase there is no middleware and we can just work with any context
-	key := fmt.Sprintf("%s-healthcheck-%s", cookies.CookieName(context.TODO(), &o.Cookie), nonce)
+	key := fmt.Sprintf("%s-healthcheck-%s", o.Cookie.Name, nonce)
 	return sendRedisConnectionTest(client, key, nonce)
 }
 

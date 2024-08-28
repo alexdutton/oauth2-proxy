@@ -43,7 +43,7 @@ type AlphaOptions struct {
 
 	// Providers is used to configure multiple providers.
 	Providers         Providers `json:"providers,omitempty"`
-	DefaultProviderID string    `json:"defaultProviderId,omitempty"`
+	DefaultProviderID string    `json:"defaultProviderID,omitempty"`
 
 	// ProviderLoader is used to allow multiple providers in oauth2-proxy.
 	// You can choose between single, config and postgres types.

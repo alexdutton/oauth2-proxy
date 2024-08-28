@@ -1,15 +1,13 @@
 package validation
 
 import (
-	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/apis/options"
-	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/cookies"
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/encryption"
-	"github.com/oauth2-proxy/oauth2-proxy/v7/providers/utils"
 )
 
 func validateCookie(o options.Cookie) []string {
@@ -28,24 +26,25 @@ func validateCookie(o options.Cookie) []string {
 		msgs = append(msgs, fmt.Sprintf("cookie_samesite (%q) must be one of ['', 'lax', 'strict', 'none']", o.SameSite))
 	}
 
-	msgs = append(msgs, validateCookieNamePrefix(o)...)
+	// Sort cookie domains by length, so that we try longer (and more specific) domains first
+	sort.Slice(o.Domains, func(i, j int) bool {
+		return len(o.Domains[i]) > len(o.Domains[j])
+	})
+
+	msgs = append(msgs, validateCookieName(o.Name)...)
 	return msgs
 }
 
-func validateCookieNamePrefix(o options.Cookie) []string {
+func validateCookieName(name string) []string {
 	msgs := []string{}
-	maxLength := 256 - 64 - 1 // -64 for hex(sha256(providerId)) length and -1 for underscore( _ separator)
 
-	ctx := context.Background()
-	cookieName := cookies.CookieName(utils.AppendProviderIDToContext(ctx, "test_provider"), &o)
-
-	cookie := &http.Cookie{Name: cookieName}
+	cookie := &http.Cookie{Name: name}
 	if cookie.String() == "" {
-		msgs = append(msgs, fmt.Sprintf("invalid cookie name prefix: %q", o.NamePrefix))
+		msgs = append(msgs, fmt.Sprintf("invalid cookie name: %q", name))
 	}
 
-	if len(o.NamePrefix) > maxLength {
-		msgs = append(msgs, fmt.Sprintf("cookie name prefix should be under %d characters: cookie name prefix is %d characters", maxLength, len(o.NamePrefix)))
+	if len(name) > 256 {
+		msgs = append(msgs, fmt.Sprintf("cookie name should be under 256 characters: cookie name is %d characters", len(name)))
 	}
 	return msgs
 }

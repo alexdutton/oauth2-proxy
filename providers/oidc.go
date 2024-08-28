@@ -18,6 +18,7 @@ type OIDCProvider struct {
 	*ProviderData
 
 	SkipNonce bool
+	IssuerURL string
 }
 
 const oidcDefaultScope = "openid email profile"
@@ -49,6 +50,7 @@ func NewOIDCProvider(p *ProviderData, opts options.OIDCOptions) *OIDCProvider {
 	return &OIDCProvider{
 		ProviderData: p,
 		SkipNonce:    opts.InsecureSkipNonce,
+		IssuerURL:    opts.IssuerURL,
 	}
 }
 
@@ -61,6 +63,10 @@ func (p *OIDCProvider) GetLoginURL(redirectURI, state, nonce string, extraParams
 	}
 	loginURL := makeLoginURL(p.Data(), redirectURI, state, extraParams)
 	return loginURL.String()
+}
+
+func (p *OIDCProvider) GetIssuerURL() string {
+	return p.IssuerURL
 }
 
 // Redeem exchanges the OAuth2 authentication token for an ID token

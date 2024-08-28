@@ -2,7 +2,6 @@ package options
 
 import (
 	"crypto"
-	"fmt"
 	"net/url"
 
 	ipapi "github.com/oauth2-proxy/oauth2-proxy/v7/pkg/apis/ip"
@@ -115,15 +114,6 @@ func NewOptions() *Options {
 		SkipAuthPreflight:  false,
 		Logging:            loggingDefaults(),
 	}
-}
-
-func (o *Options) Init() error {
-	err := (&o.Cookie).Init()
-	if err != nil {
-		return fmt.Errorf("failed to initialize cookie config: %v", err)
-	}
-
-	return nil
 }
 
 // NewFlagSet creates a new FlagSet with all of the flags required by Options
